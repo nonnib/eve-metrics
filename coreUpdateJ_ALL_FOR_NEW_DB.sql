@@ -25,9 +25,9 @@ BEGIN
   (
     [group]        varchar(200)   NOT NULL,
     [key]          varchar(200)   NOT NULL,
-    [value]        nvarchar(max)  NOT NULL,
-    [description]  nvarchar(max)  NOT NULL,
-    defaultValue   nvarchar(max)  NULL,
+    [value]        nvarchar(4000)  NOT NULL,
+    [description]  nvarchar(4000)  NOT NULL,
+    defaultValue   nvarchar(4000)  NULL,
     critical       bit            NOT NULL  DEFAULT 0,
     allowUpdate    bit            NOT NULL  DEFAULT 0,
     orderID        int            NOT NULL  DEFAULT 0,
@@ -94,9 +94,9 @@ IF OBJECT_ID('zsystem.Settings_Value') IS NOT NULL
   DROP FUNCTION zsystem.Settings_Value
 GO
 CREATE FUNCTION zsystem.Settings_Value(@group varchar(200), @key varchar(200))
-RETURNS nvarchar(max)
+RETURNS nvarchar(4000)
 BEGIN
-  DECLARE @value nvarchar(max)
+  DECLARE @value nvarchar(4000)
   SELECT @value = LTRIM(RTRIM([value])) FROM zsystem.settings WHERE [group] = @group AND [key] = @key
   RETURN ISNULL(@value, '')
 END
@@ -230,7 +230,7 @@ GO
 CREATE PROCEDURE zsystem.SendMail
   @recipients   varchar(max),
   @subject      nvarchar(255),
-  @body         nvarchar(max),
+  @body         nvarchar(4000),
   @body_format  varchar(20) = NULL
 AS
   SET NOCOUNT ON
@@ -239,7 +239,7 @@ AS
   IF CONVERT(varchar(max), SERVERPROPERTY('edition')) NOT LIKE '%Azure%'
   BEGIN
     EXEC sp_executesql N'EXEC msdb.dbo.sp_send_dbmail NULL, @p_recipients, NULL, NULL, @p_subject, @p_body, @p_body_format',
-                       N'@p_recipients varchar(max), @p_subject nvarchar(255), @p_body nvarchar(max), @p_body_format  varchar(20)',
+                       N'@p_recipients varchar(max), @p_subject nvarchar(255), @p_body nvarchar(4000), @p_body_format  varchar(20)',
                        @p_recipients = @recipients, @p_subject = @subject, @p_body = @body, @p_body_format = @body_format
   END
 GO
@@ -291,7 +291,7 @@ AS
   SET @recipients = zsystem.Settings_Value('zsystem', 'Recipients-Updates')
   IF @recipients != '' AND zsystem.Settings_Value('zsystem', 'Database') = DB_NAME()
   BEGIN
-    DECLARE @subject nvarchar(255), @body nvarchar(max)
+    DECLARE @subject nvarchar(255), @body nvarchar(4000)
     SET @subject = 'Database update ' + @developer + '-' + CONVERT(varchar, @version) + ' applied on ' + DB_NAME()
     SET @body = NCHAR(13) + @subject + NCHAR(13)
                 + NCHAR(13) + '  Developer: ' + @developer
@@ -1224,8 +1224,8 @@ GO
 IF OBJECT_ID('zutil.NoBrackets') IS NOT NULL
   DROP FUNCTION zutil.NoBrackets
 GO
-CREATE FUNCTION zutil.NoBrackets(@s nvarchar(max))
-RETURNS nvarchar(max)
+CREATE FUNCTION zutil.NoBrackets(@s nvarchar(4000))
+RETURNS nvarchar(4000)
 BEGIN
   RETURN REPLACE(REPLACE(@s, '[', ''), ']', '')
 END
@@ -1394,7 +1394,7 @@ BEGIN
   (
     eventTypeID    int            NOT NULL,
     eventTypeName  nvarchar(200)  NOT NULL,
-    [description]  nvarchar(max)  NOT NULL,
+    [description]  nvarchar(4000)  NOT NULL,
     obsolete       bit            NOT NULL  DEFAULT 0,
     --
     CONSTRAINT eventTypes_PK PRIMARY KEY CLUSTERED (eventTypeID)
@@ -1467,7 +1467,7 @@ BEGIN
     int_7        int            NULL,
     int_8        int            NULL,
     int_9        int            NULL,
-    eventText    nvarchar(max)  NULL,
+    eventText    nvarchar(4000)  NULL,
     referenceID  int            NULL,  -- General referenceID, could f.e. be used for first eventID if there are grouped events
     date_1       date           NULL,
     taskID       int            NULL,  -- Task in zsystem.tasks
@@ -1581,7 +1581,7 @@ BEGIN
   (
     schemaID       int            NOT NULL,
     schemaName     nvarchar(128)  NOT NULL,
-    [description]  nvarchar(max)  NOT NULL,
+    [description]  nvarchar(4000)  NOT NULL,
     webPage        varchar(200)   NULL,
     --
     CONSTRAINT schemas_PK PRIMARY KEY CLUSTERED (schemaID)
@@ -1603,7 +1603,7 @@ BEGIN
     schemaID             int            NOT NULL,
     tableID              int            NOT NULL,
     tableName            nvarchar(128)  NOT NULL,
-    [description]        nvarchar(max)  NOT NULL,
+    [description]        nvarchar(4000)  NOT NULL,
     tableType            varchar(20)    NULL,
     logIdentity          tinyint        NULL,  -- 1:Int, 2:Bigint
     copyStatic           tinyint        NULL,  -- 1:BSD, 2:Regular
@@ -1873,8 +1873,8 @@ BEGIN
   (
     jobID          int            NOT NULL,
     jobName        nvarchar(200)  NOT NULL,
-    [description]  nvarchar(max)  NOT NULL,
-    [sql]          nvarchar(max)  NOT NULL,
+    [description]  nvarchar(4000)  NOT NULL,
+    [sql]          nvarchar(4000)  NOT NULL,
     --
     [hour]         tinyint        NULL,  -- 0, 1, 2, ..., 22, 23
     [minute]       tinyint        NULL,  -- 0, 10, 20, 30, 40, 50
@@ -1954,7 +1954,7 @@ BEGIN
   (
     intervalID     int            NOT NULL,
     intervalName   nvarchar(200)  NOT NULL,
-    [description]  nvarchar(max)  NOT NULL,
+    [description]  nvarchar(4000)  NOT NULL,
     minID          bigint         NOT NULL,
     maxID          bigint         NOT NULL,
     currentID      bigint         NOT NULL,
@@ -1992,7 +1992,7 @@ BEGIN
   (
     lookupTableID             int                                          NOT NULL,
     lookupTableName           nvarchar(200)                                NOT NULL,
-    [description]             nvarchar(max)                                NULL,
+    [description]             nvarchar(4000)                                NULL,
     --
     schemaID                  int                                          NULL, -- Link lookup table to a schema, just info
     tableID                   int                                          NULL, -- Link lookup table to a table, just info
@@ -2026,7 +2026,7 @@ BEGIN
     lookupTableID  int                                           NOT NULL,
     lookupID       int                                           NOT NULL,
     lookupText     nvarchar(1000)  COLLATE Latin1_General_CI_AI  NOT NULL,
-    [description]  nvarchar(max)                                 NULL,
+    [description]  nvarchar(4000)                                 NULL,
     parentID       int                                           NULL,
     [fullText]     nvarchar(1000)  COLLATE Latin1_General_CI_AI  NULL,
     --
@@ -2104,7 +2104,7 @@ IF OBJECT_ID('zsystem.SQL') IS NOT NULL
   DROP PROCEDURE zsystem.SQL
 GO
 CREATE PROCEDURE zsystem.SQL
-  @sql  nvarchar(max)
+  @sql  nvarchar(4000)
 AS
   SET NOCOUNT ON
   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
@@ -2133,7 +2133,7 @@ AS
   SET NOCOUNT ON
   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
-  DECLARE @stmt nvarchar(max)
+  DECLARE @stmt nvarchar(4000)
   SET @stmt = 'SELECT ' + @sqlSelect + ' FROM ' + @sqlFrom + ' WHERE '
   IF NOT (@sqlWhere IS NULL OR @sqlWhere = '')
     SET @stmt = @stmt + @sqlWhere + ' AND '
@@ -2164,7 +2164,7 @@ AS
   SET NOCOUNT ON
   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
-  DECLARE @stmt nvarchar(max)
+  DECLARE @stmt nvarchar(4000)
   SET @stmt = 'SELECT ' + @sqlSelect + ' FROM ' + @sqlFrom + ' WHERE '
   IF NOT (@sqlWhere IS NULL OR @sqlWhere = '')
     SET @stmt = @stmt + @sqlWhere + ' AND '
@@ -2184,7 +2184,7 @@ IF OBJECT_ID('zsystem.SQLSELECT') IS NOT NULL
   DROP PROCEDURE zsystem.SQLSELECT
 GO
 CREATE PROCEDURE zsystem.SQLSELECT
-  @sql  nvarchar(max)
+  @sql  nvarchar(4000)
 AS
   SET NOCOUNT ON
   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
@@ -2573,7 +2573,7 @@ GO
 IF OBJECT_ID('zutil.WordCount') IS NOT NULL
   DROP FUNCTION zutil.WordCount
 GO
-CREATE FUNCTION zutil.WordCount(@s nvarchar(max))
+CREATE FUNCTION zutil.WordCount(@s nvarchar(4000))
 RETURNS int
 BEGIN
   -- Returns the word count of a string
@@ -3093,7 +3093,7 @@ BEGIN
   (
     groupID        smallint                                     NOT NULL,
     groupName      nvarchar(200)  COLLATE Latin1_General_CI_AI  NOT NULL,
-    [description]  nvarchar(max)                                NULL,
+    [description]  nvarchar(4000)                                NULL,
     [order]        smallint                                     NOT NULL  DEFAULT 0,
     parentGroupID  smallint                                     NULL,
     --
@@ -3116,7 +3116,7 @@ BEGIN
     counterID             smallint                                     NOT NULL,
     counterName           nvarchar(200)  COLLATE Latin1_General_CI_AI  NOT NULL,
     groupID               smallint                                     NULL,
-    [description]         nvarchar(max)                                NULL,
+    [description]         nvarchar(4000)                                NULL,
     subjectLookupTableID  int                                          NULL, -- Lookup table for subjectID, pointing to zsystem.lookupTables/Values
     keyLookupTableID      int                                          NULL, -- Lookup table for keyID, pointing to zsystem.lookupTables/Values
     [source]              nvarchar(200)                                NULL, -- Description of data source, f.e. table name
@@ -3179,7 +3179,7 @@ BEGIN
     counterID          smallint                                     NOT NULL,
     columnID           tinyint                                      NOT NULL,
     columnName         nvarchar(200)  COLLATE Latin1_General_CI_AI  NOT NULL,
-    [description]      nvarchar(max)                                NULL,
+    [description]      nvarchar(4000)                                NULL,
     [order]            smallint                                     NOT NULL  DEFAULT 0,
     units              varchar(20)                                  NULL, -- If set here it overrides value in zmetric.counters.units
     counterTable       nvarchar(256)                                NULL, -- If set here it overrides value in zmetric.counters.counterTable
@@ -3593,7 +3593,7 @@ GO
 IF OBJECT_ID('zutil.CharListToOrderedTable') IS NOT NULL
   DROP FUNCTION zutil.CharListToOrderedTable
 GO
-CREATE FUNCTION zutil.CharListToOrderedTable(@list nvarchar(MAX))
+CREATE FUNCTION zutil.CharListToOrderedTable(@list nvarchar(4000))
   RETURNS TABLE
   RETURN SELECT row = ROW_NUMBER() OVER(ORDER BY n),
                 string = SUBSTRING(@list, n, CHARINDEX(',', @list + ',', n) - n)
@@ -3612,7 +3612,7 @@ GO
 IF OBJECT_ID('zutil.CharListToOrderedTableTrim') IS NOT NULL
   DROP FUNCTION zutil.CharListToOrderedTableTrim
 GO
-CREATE FUNCTION zutil.CharListToOrderedTableTrim(@list nvarchar(MAX))
+CREATE FUNCTION zutil.CharListToOrderedTableTrim(@list nvarchar(4000))
   RETURNS TABLE
   RETURN SELECT row = ROW_NUMBER() OVER(ORDER BY n),
                 string = LTRIM(RTRIM(SUBSTRING(@list, n, CHARINDEX(',', @list + ',', n) - n)))
@@ -3631,7 +3631,7 @@ GO
 IF OBJECT_ID('zutil.CharListToTable') IS NOT NULL
   DROP FUNCTION zutil.CharListToTable
 GO
-CREATE FUNCTION zutil.CharListToTable(@list nvarchar(max))
+CREATE FUNCTION zutil.CharListToTable(@list nvarchar(4000))
   RETURNS TABLE
   RETURN SELECT string = SUBSTRING(@list, n, CHARINDEX(',', @list + ',', n) - n)
            FROM zutil.Numbers(LEN(@list) + 1)
@@ -3649,7 +3649,7 @@ GO
 IF OBJECT_ID('zutil.CharListToTableTrim') IS NOT NULL
   DROP FUNCTION zutil.CharListToTableTrim
 GO
-CREATE FUNCTION zutil.CharListToTableTrim(@list nvarchar(max))
+CREATE FUNCTION zutil.CharListToTableTrim(@list nvarchar(4000))
   RETURNS TABLE
   RETURN SELECT string = LTRIM(RTRIM(SUBSTRING(@list, n, CHARINDEX(',', @list + ',', n) - n)))
            FROM zutil.Numbers(LEN(@list) + 1)
@@ -3938,7 +3938,7 @@ GO
 CREATE PROCEDURE zsystem.LookupTables_Insert
   @lookupTableID          int = NULL,            -- NULL means MAX-UNDER-2000000000 + 1
   @lookupTableName        nvarchar(200),
-  @description            nvarchar(max) = NULL,
+  @description            nvarchar(4000) = NULL,
   @schemaID               int = NULL,            -- Link lookup table to a schema, just info
   @tableID                int = NULL,            -- Link lookup table to a table, just info
   @source                 nvarchar(200) = NULL,  -- Description of data source, f.e. table name
@@ -4866,14 +4866,14 @@ IF OBJECT_ID('zsystem.PrintMax') IS NOT NULL
   DROP PROCEDURE zsystem.PrintMax
 GO
 CREATE PROCEDURE zsystem.PrintMax
-  @str  nvarchar(max)
+  @str  nvarchar(4000)
 AS
   SET NOCOUNT ON
 
   IF @str IS NULL
     RETURN
 
-  DECLARE @reversed nvarchar(max), @break int
+  DECLARE @reversed nvarchar(4000), @break int
 
   WHILE (LEN(@str) > 4000)
   BEGIN
@@ -4917,12 +4917,12 @@ AS
   SET @recipients = zsystem.Settings_Value('zdm', 'Recipients-LongRunning')
   IF @recipients = '' RETURN
 
-  DECLARE @ignoreSQL nvarchar(max)
+  DECLARE @ignoreSQL nvarchar(4000)
   SET @ignoreSQL = zsystem.Settings_Value('zdm', 'LongRunning-IgnoreSQL')
 
-  DECLARE @session_id int, @start_time datetime2(0), @text nvarchar(max)
+  DECLARE @session_id int, @start_time datetime2(0), @text nvarchar(4000)
 
-  DECLARE @stmt nvarchar(max), @cursor CURSOR
+  DECLARE @stmt nvarchar(4000), @cursor CURSOR
   SET @stmt = '
 SET @p_cursor = CURSOR LOCAL FAST_FORWARD
   FOR SELECT TOP (@p_rows) R.session_id, R.start_time, S.[text]
@@ -4967,7 +4967,7 @@ AS
   DECLARE @schemaID int, @schemaName nvarchar(128), @objectID int,
           @type char(2), @typeDesc nvarchar(60),
           @createDate datetime2(0), @modifyDate datetime2(0), @isMsShipped bit,
-          @i int, @text nvarchar(max), @parentID int
+          @i int, @text nvarchar(4000), @parentID int
 
   SET @i = CHARINDEX('.', @objectName)
   IF @i > 0
@@ -5141,7 +5141,7 @@ AS
   SET NOCOUNT ON
   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
-  DECLARE @objectID int, @objectName nvarchar(256), @text nvarchar(max), @somethingFound bit = 0
+  DECLARE @objectID int, @objectName nvarchar(256), @text nvarchar(4000), @somethingFound bit = 0
 
   DECLARE @cursor CURSOR
   SET @cursor = CURSOR LOCAL FAST_FORWARD
@@ -5744,7 +5744,7 @@ BEGIN
   (
     taskID         int                                          NOT NULL,
     taskName       nvarchar(450)  COLLATE Latin1_General_CI_AI  NOT NULL,
-    [description]  nvarchar(max)                                NULL,
+    [description]  nvarchar(4000)                                NULL,
     --
     CONSTRAINT tasks_PK PRIMARY KEY CLUSTERED (taskID)
   )
@@ -5779,7 +5779,7 @@ CREATE PROCEDURE zsystem.Events_Insert
   @int_7        int = NULL,
   @int_8        int = NULL,
   @int_9        int = NULL,
-  @eventText    nvarchar(max) = NULL,
+  @eventText    nvarchar(4000) = NULL,
   @returnRow    bit = 0,
   @referenceID  int = NULL,
   @date_1       date = NULL,
@@ -5864,7 +5864,7 @@ GO
 CREATE PROCEDURE zsystem.Events_TaskStarted
   @taskName     nvarchar(450) = NULL,
   @fixedText    nvarchar(450) = NULL,
-  @eventText    nvarchar(max) = NULL,
+  @eventText    nvarchar(4000) = NULL,
   @int_1        int = NULL,
   @int_2        int = NULL,
   @int_3        int = NULL,
@@ -5908,7 +5908,7 @@ IF OBJECT_ID('zsystem.Events_TaskCompleted') IS NOT NULL
 GO
 CREATE PROCEDURE zsystem.Events_TaskCompleted
   @eventID      int = NULL,
-  @eventText    nvarchar(max) = NULL,
+  @eventText    nvarchar(4000) = NULL,
   @int_1        int = NULL,
   @int_2        int = NULL,
   @int_3        int = NULL,
@@ -5964,7 +5964,7 @@ IF OBJECT_ID('zsystem.Events_TaskInfo') IS NOT NULL
 GO
 CREATE PROCEDURE zsystem.Events_TaskInfo
   @eventID      int = NULL,
-  @eventText    nvarchar(max) = NULL,
+  @eventText    nvarchar(4000) = NULL,
   @int_1        int = NULL,
   @int_2        int = NULL,
   @int_3        int = NULL,
@@ -6010,7 +6010,7 @@ IF OBJECT_ID('zsystem.Events_TaskError') IS NOT NULL
 GO
 CREATE PROCEDURE zsystem.Events_TaskError
   @eventID      int = NULL,
-  @eventText    nvarchar(max) = NULL,
+  @eventText    nvarchar(4000) = NULL,
   @int_1        int = NULL,
   @int_2        int = NULL,
   @int_3        int = NULL,
@@ -6069,7 +6069,7 @@ GO
 CREATE PROCEDURE zsystem.Events_JobInfo
   @jobID        int,
   @fixedText    nvarchar(450) = NULL,
-  @eventText    nvarchar(max) = NULL,
+  @eventText    nvarchar(4000) = NULL,
   @int_2        int = NULL,
   @int_3        int = NULL,
   @int_4        int = NULL,
@@ -6123,7 +6123,7 @@ AS
   ELSE IF @r <= 3.0 SET @week = 3
   ELSE IF @r <= 4.0 SET @week = 4
 
-  DECLARE @jobID int, @jobName nvarchar(200), @sql nvarchar(max), @logStarted bit, @logCompleted bit, @eventID int, @eventText nvarchar(max)
+  DECLARE @jobID int, @jobName nvarchar(200), @sql nvarchar(4000), @logStarted bit, @logCompleted bit, @eventID int, @eventText nvarchar(4000)
 
   DECLARE @cursor CURSOR
 
@@ -6246,7 +6246,7 @@ AS
       DECLARE @intervalName nvarchar(400)
       DECLARE @maxID int
       DECLARE @currentID int
-      DECLARE @body nvarchar(max)
+      DECLARE @body nvarchar(4000)
 
       DECLARE @cursor CURSOR
       SET @cursor = CURSOR LOCAL FAST_FORWARD
@@ -6286,7 +6286,7 @@ CREATE PROCEDURE zmetric.Counters_Insert
   @counterID             smallint = NULL,       -- NULL means MAX-UNDER-30000 + 1
   @counterName           nvarchar(200),
   @groupID               smallint = NULL,
-  @description           nvarchar(max) = NULL,
+  @description           nvarchar(4000) = NULL,
   @subjectLookupTableID  int = NULL,            -- Lookup table for subjectID, pointing to zsystem.lookupTables/Values
   @keyLookupTableID      int = NULL,            -- Lookup table for keyID, pointing to zsystem.lookupTables/Values
   @source                nvarchar(200) = NULL,  -- Description of data source, f.e. table name
@@ -6472,7 +6472,7 @@ AS
     IF @counterTable = 'zmetric.subjectKeyCounters' AND (@subjectLookupTableID IS NULL OR @keyLookupTableID IS NULL)
       RAISERROR ('Subject/Key counter is not valid, subject lookup or key lookup not set', 16, 1)
 
-    DECLARE @sql nvarchar(max)
+    DECLARE @sql nvarchar(4000)
 
     IF @subjectLookupTableID IS NOT NULL AND @keyLookupTableID IS NOT NULL
     BEGIN
@@ -6513,7 +6513,7 @@ AS
       IF EXISTS(SELECT * FROM zmetric.columns WHERE counterID = @counterID)
       BEGIN
         -- Multiple columns (Single value / Multiple key values)
-        DECLARE @columnID tinyint, @columnName nvarchar(200), @orderBy nvarchar(200), @sql2 nvarchar(max) = '', @alias nvarchar(10)
+        DECLARE @columnID tinyint, @columnName nvarchar(200), @orderBy nvarchar(200), @sql2 nvarchar(4000) = '', @alias nvarchar(10)
         IF @keyLookupTableID IS NULL
           SET @sql = 'SELECT TOP 1 '
         ELSE
@@ -6752,7 +6752,7 @@ AS
       DECLARE @subject nvarchar(255)
       SET @subject = HOST_NAME() + '.' + DB_NAME() + ': Index Statistics'
 
-      DECLARE @body nvarchar(MAX)
+      DECLARE @body nvarchar(4000)
       SET @body = 
         -- rows
           N'<h3><font color=blue>Top 30 rows</font></h3>'
@@ -6773,7 +6773,7 @@ AS
             LEFT JOIN zmetric.keyCounters C4 ON C4.counterID = C1.counterID AND C4.counterDate = C1.counterDate AND C4.columnID = 4 AND C4.keyID = C1.keyID
          WHERE C1.counterID = 30008 AND C1.counterDate = @counterDate AND C1.columnID = 1
          ORDER BY C1.value DESC
-               FOR XML PATH('tr'), TYPE) AS nvarchar(MAX)), '<tr></tr>')
+               FOR XML PATH('tr'), TYPE) AS nvarchar(4000)), '<tr></tr>')
         + N'</table>'
 
         -- total_MB
@@ -6795,7 +6795,7 @@ AS
             LEFT JOIN zmetric.keyCounters C1 ON C1.counterID = C2.counterID AND C1.counterDate = C2.counterDate AND C1.columnID = 1 AND C1.keyID = C2.keyID
          WHERE C2.counterID = 30008 AND C2.counterDate = @counterDate AND C2.columnID = 2
          ORDER BY C2.value DESC
-               FOR XML PATH('tr'), TYPE) AS nvarchar(MAX)), '<tr></tr>')
+               FOR XML PATH('tr'), TYPE) AS nvarchar(4000)), '<tr></tr>')
         + N'</table>'
 
         -- user_seeks (accumulative count, subtracting the value from the day before)
@@ -6812,7 +6812,7 @@ AS
             LEFT JOIN zmetric.keyCounters C5B ON C5B.counterID = C5.counterID AND C5B.counterDate = @subtractDate AND C5B.columnID = C5.columnID AND C5B.keyID = C5.keyID
          WHERE C5.counterID = 30007 AND C5.counterDate = @counterDate AND C5.columnID = 5
          ORDER BY (C5.value - ISNULL(C5B.value, 0)) DESC
-               FOR XML PATH('tr'), TYPE) AS nvarchar(MAX)), '<tr></tr>')
+               FOR XML PATH('tr'), TYPE) AS nvarchar(4000)), '<tr></tr>')
         + N'</table>'
 
         -- user_scans (accumulative count, subtracting the value from the day before)
@@ -6829,7 +6829,7 @@ AS
             LEFT JOIN zmetric.keyCounters C6B ON C6B.counterID = C6.counterID AND C6B.counterDate = @subtractDate AND C6B.columnID = C6.columnID AND C6B.keyID = C6.keyID
          WHERE C6.counterID = 30007 AND C6.counterDate = @counterDate AND C6.columnID = 6
          ORDER BY (C6.value - ISNULL(C6B.value, 0)) DESC
-               FOR XML PATH('tr'), TYPE) AS nvarchar(MAX)), '<tr></tr>')
+               FOR XML PATH('tr'), TYPE) AS nvarchar(4000)), '<tr></tr>')
         + N'</table>'
 
         -- user_lookups (accumulative count, subtracting the value from the day before)
@@ -6846,7 +6846,7 @@ AS
             LEFT JOIN zmetric.keyCounters C7B ON C7B.counterID = C7.counterID AND C7B.counterDate = @subtractDate AND C7B.columnID = C7.columnID AND C7B.keyID = C7.keyID
          WHERE C7.counterID = 30007 AND C7.counterDate = @counterDate AND C7.columnID = 7
          ORDER BY (C7.value - ISNULL(C7B.value, 0)) DESC
-               FOR XML PATH('tr'), TYPE) AS nvarchar(MAX)), '<tr></tr>')
+               FOR XML PATH('tr'), TYPE) AS nvarchar(4000)), '<tr></tr>')
         + N'</table>'
 
         -- user_updates (accumulative count, subtracting the value from the day before)
@@ -6863,7 +6863,7 @@ AS
             LEFT JOIN zmetric.keyCounters C8B ON C8B.counterID = C8.counterID AND C8B.counterDate = @subtractDate AND C8B.columnID = C8.columnID AND C8B.keyID = C8.keyID
          WHERE C8.counterID = 30007 AND C8.counterDate = @counterDate AND C8.columnID = 8
          ORDER BY (C8.value - ISNULL(C8B.value, 0)) DESC
-               FOR XML PATH('tr'), TYPE) AS nvarchar(MAX)), '<tr></tr>')
+               FOR XML PATH('tr'), TYPE) AS nvarchar(4000)), '<tr></tr>')
         + N'</table>'
 
       EXEC zsystem.SendMail @recipients, @subject, @body, 'HTML'
@@ -7019,7 +7019,7 @@ AS
   SET NOCOUNT ON
   SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
-  DECLARE @columns nvarchar(max) = '', @identityColumn nvarchar(128)
+  DECLARE @columns nvarchar(4000) = '', @identityColumn nvarchar(128)
 
   DECLARE @columnName nvarchar(128), @isIdentity bit
 
@@ -7054,7 +7054,7 @@ AS
     RETURN -1
   END
 
-  DECLARE @stmt nvarchar(max)
+  DECLARE @stmt nvarchar(4000)
   SET @stmt = 'INSERT INTO ' + @tableName + ' ('
   IF @keyColumn IS NOT NULL
     SET @stmt += @keyColumn + ', '
@@ -7410,7 +7410,7 @@ AS
       login_name                 nvarchar(128),
       database_name              nvarchar(128),
       [object_name]              nvarchar(256),
-      [text]                     nvarchar(max),
+      [text]                     nvarchar(4000),
       command                    nvarchar(32),
       [status]                   nvarchar(30),
       estimated_completion_time  varchar(20),
@@ -7523,7 +7523,7 @@ AS
       login_name                 nvarchar(128),
       database_name              nvarchar(128),
       [object_name]              nvarchar(256),
-      [text]                     nvarchar(max),
+      [text]                     nvarchar(4000),
       command                    nvarchar(32),
       [status]                   nvarchar(30),
       estimated_completion_time  varchar(20),
@@ -7656,7 +7656,7 @@ AS
 
   IF @eventID IS NULL SET @eventID = 2147483647
 
-  DECLARE @stmt nvarchar(max)
+  DECLARE @stmt nvarchar(4000)
 
   SET @stmt = 'SELECT TOP (@pRows) * FROM zsystem.eventsEx WHERE eventID < @pEventID'
 
@@ -7664,8 +7664,8 @@ AS
   -- Application Hook!
   IF @filter != '' AND OBJECT_ID('system.Events_AppFilter') IS NOT NULL
   BEGIN
-    DECLARE @where nvarchar(max)
-    EXEC sp_executesql N'SELECT @p_where = system.Events_AppFilter(@p_filter)', N'@p_where nvarchar(max) OUTPUT, @p_filter varchar(50)', @where OUTPUT, @filter
+    DECLARE @where nvarchar(4000)
+    EXEC sp_executesql N'SELECT @p_where = system.Events_AppFilter(@p_filter)', N'@p_where nvarchar(4000) OUTPUT, @p_filter varchar(50)', @where OUTPUT, @filter
     SET @stmt += @where
   END
 
@@ -7824,7 +7824,7 @@ GO
 CREATE PROCEDURE zsystem.Settings_Update
   @group              varchar(200), 
   @key                varchar(200), 
-  @value              nvarchar(max),
+  @value              nvarchar(4000),
   @userID             int = NULL,
   @insertIfNotExists  bit = 0
 AS

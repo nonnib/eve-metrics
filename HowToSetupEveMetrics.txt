@@ -44,6 +44,14 @@ Open the following files in SQL Studio and execute on database ebs_METRICS...
   metricsUpdate_ALL_FOR_NEW_DB.sql
   metricsTestData.sql
 
+-----------------
+DB CONNECTION STRINGS
+-----------------
+
+The DB connection strings for the WEB2PY DAL on one hand and direct pyodbc on the other are set up at the top of the following file:
+  web2py/applications/evemetrics/models/db.py
+
+If you are running on Windows you will typically only need to change the DB_SERVER value. Typically when testing this will just be "LOCALHOST"
 
 -----------------
 RUN WEB2PY SERVER
@@ -54,15 +62,64 @@ Open command line window in folder ebs_METRICS/web2py and execute...
 
 Then you have access to EVE Metrics on http://127.0.0.1/evemetrics/default
 
+If port 80 is already in use you can use another port for testing.
 
+-----------------
+EVE METRICS ON UBUNTU
+-----------------
 
+The setup instructions above assume a Windows platform. If you want to run Eve Metrics on Linux you will need to take an additonal step to get things up and running. 
+
+This step involves setting up MS SQL Server ODBC connection from Linux. Note that the MS SQL Instance only runs on Windows while the webserver can run on Linux.
+
+We will assume an Ubuntu Linux instance running in AWS with the ebs_METRICS database running on a managed RDS instance.
+
+I followed these instructions: http://onefinepub.com/2013/03/ms-sql-odbc-ubuntu/
+
+Here are the microft instructions:
+   https://msdn.microsoft.com/en-us/library/hh568454(v=sql.110).aspx
+
+Here is the download link to the driver:
+   https://www.microsoft.com/en-us/download/details.aspx?id=36437
+
+You will need to set up the DB objects using SQL Server Manager studio (free download from MS) running on Windows so I would highly recommend a Windows dev environment. 
+
+Once you have followed the tutorial above and after the database is ready with the objects created and the proper permission for the user you can test if everything is okay from the Linux side by running the following:
+
+ubutnu@ip-10-50-1-1:~/web2py$ sqlcmd -S myserver-mssql.c40zji49p9dj.eu-west-1.rds.amazonaws.com -U ebs_METRICS
+Password: ebs_Metrics
+1> USE ebs_METRICS
+2> GO
+Changed database context...
+1> SELECT * FROM zmetric.countersEx
+2> GO
+
+You should now receive a wall of text from that view and are good to go.
+
+When setting up the connection in the web2py config you will need to use the following driver:
+
+DB_DRIVER = "{freetds}"
+
+This assumes the following entry in /etc/odbcinst.ini:
+[freetds]
+...
+
+And the following entry in /etc/odbc.ini
+[mssql]
+...
+Driver = freetds
+...
+
+These entries were added during the driver installation and perhaps through some liberal copy/paste. You might need to tweak your config accordingly.
+
+If you run into issues I would suggest getting the connection to work in a python shell using pyodbc before running the web2py stack.
+
+> pyodbc.connect("DRIVER={freetds};SERVER=myserver-mssql.c40zji49p9dj.eu-west-1.rds.amazonaws.com;DATABASE=ebs_METRICS;UID=ebs_METRICS;PWD=ebs_METRICS")
+> curr = pyodbc.execute("SELECT * FROM zmetric.countersEx")
+> print curr.fetchone()
 
 -----------
 OTHER STUFF
 -----------
-
-Database connection strings are found in the following files...
-  web2py/applications/evemetrics/models/db.py
-  web2py/applications/evemetrics/controllers/default.py
 
 Password for Admin tab is changeme

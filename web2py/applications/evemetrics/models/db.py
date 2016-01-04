@@ -16,7 +16,28 @@ logger.setLevel(logging.WARN)
 def FmtDate(dt):
     return dt.strftime("%Y-%m-%d")
 
+DB_SERVER   = "devnorth-mssql.c40zji49p9dj.eu-west-1.rds.amazonaws.com"
+DB_USERNAME = "ebs_METRICS"
+DB_PASSWORD = "ebs_METRICS"
+DB_DRIVER   = "{SQL Server}"
+DB_DATABASE = "ebs_METRICS"
+
+DB_WEB2PY_STRING = 'mssql://{username}:{password}@{server}/{database}?driver={driver}'.format(username=DB_USERNAME,
+                                                                                              password=DB_PASSWORD, 
+                                                                                              server=DB_SERVER, 
+                                                                                              database=DB_DATABASE, 
+                                                                                              driver=DB_DRIVER)
+DB_CONNECTION_STRING = 'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'.format(username=DB_USERNAME,
+                                                                                                                  password=DB_PASSWORD, 
+                                                                                                                  server=DB_SERVER, 
+                                                                                                                  database=DB_DATABASE, 
+                                                                                                                  driver=DB_DRIVER)
+
+ADMIN_PASSWORD = "changeme"
+ACCESS_SECRET  = "SECRET!"
+
 def RedirectPrintToLog(logName):
+    return
     logFileName = os.path.join("logs", "%s_%s_stdout.log" % (logName, FmtDate(datetime.datetime.today())))
     sys.stdout = open(logFileName, "a")
     logFileName = os.path.join("logs", "%s_%s_stderr.log" % (logName, FmtDate(datetime.datetime.today())))
@@ -48,8 +69,8 @@ ACCESS_GRANTED          = 0
 ACCESS_DENIED           = 1
 ACCESS_DENIED_LOGGEDOUT = 2
 
-ACCESS_SECRET           = "SECRET!"
-db = SQLDB('mssql://ebs_METRICS:ebs_METRICS@LOCALHOST/ebs_METRICS', check_reserved=['mssql'])
+db = SQLDB(DB_WEB2PY_STRING, check_reserved=['mssql'])
+dbmetrics = db
 
 response.generic_patterns = ['*'] # to allow generic views
 
@@ -69,11 +90,6 @@ TAG_DIGEST      = 5
 CACHE_TIME = 60 * 30 # cache for 30 minutes !!
 CACHE_TIME_FOREVER = 60 * 60 * 24
 CACHE_TIME_SHORT = 60 # cache for 1 minute
-
-ADMIN_PASSWORD = "changeme"
-
-dbmetrics = SQLDB('mssql://ebs_METRICS:ebs_METRICS@LOCALHOST/ebs_METRICS', check_reserved=['mssql'])
-
 
 def GetAccessRules():
     rules = cache.ram("accessRules", lambda:DoGetAccessRules(), CACHE_TIME)
@@ -238,9 +254,21 @@ def MakePrettySQLOld(sql):
     s = s.replace(" UNION ", "<span class=sql>UNION</span><br>")
     return s
 
-
 def GetFullUrl():
-    url = (request.env.web2py_original_uri or "")
+    """
+        Returns the full URL ending with ? or & appropriately so you can append the next
+        bit of the query directly.
+    """
+    if request.env.query_string:
+        query_string = '?' + request.env.query_string
+    else:
+        query_string = ''
+
+    if request.env.web2py_original_uri:
+        url = request.env.web2py_original_uri
+    else:
+        url = request.env.path_info + query_string
+
     if url.endswith("?"):
         pass
     elif url.endswith("&"):
@@ -250,14 +278,14 @@ def GetFullUrl():
             url += "&"
         else:
             url += "?"
-    return url
+    return url or ""
 
 def GetMethod():
-    return request.env.web2py_original_uri.split("?")[0].split("/")[1]
+    return GetFullUrl().split("?")[0].split("/")[1]
 
 def GetFullUrlWithout(k):
     klst = k.split("&")
-    url = request.env.web2py_original_uri
+    url = GetFullUrl()
     lst = url.split("?")
     if len(lst) < 2:
         return url + "?"

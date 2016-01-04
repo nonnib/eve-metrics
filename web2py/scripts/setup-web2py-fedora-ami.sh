@@ -159,6 +159,7 @@ fi
 
 wget http://web2py.com/examples/static/web2py_src.zip
 unzip web2py_src.zip
+mv web2py/handlers/wsgihandler.py web2py/wsgihandler.py
 chown -R apache:apache web2py
 
 ###
@@ -310,8 +311,8 @@ NameVirtualHost *:443
       Allow from all
     </Files>
   </Directory>
-
-  AliasMatch ^/([^/]+)/static/(.*) /opt/web-apps/web2py/applications/\$1/static/\$2
+  AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) \
+        /opt/web-apps/web2py/applications/\$1/static/\$2
 
   <Directory /opt/web-apps/web2py/applications/*/static>
     Options -Indexes
@@ -349,7 +350,8 @@ NameVirtualHost *:443
     </Files>
   </Directory>
 
-  AliasMatch ^/([^/]+)/static/(.*) /opt/web-apps/web2py/applications/\$1/static/\$2
+  AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) \
+        /opt/web-apps/web2py/applications/\$1/static/\$2
 
   <Directory /opt/web-apps/web2py/applications/*/static>
     Options -Indexes

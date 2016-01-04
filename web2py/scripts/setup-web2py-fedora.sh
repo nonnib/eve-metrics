@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "This script will:
 1) Install modules needed to run web2py on Fedora and CentOS/RHEL
 2) Install Python 2.6 to /opt and recompile wsgi if not provided
@@ -27,7 +28,7 @@ Press ENTER to continue...[ctrl+C to abort]"
 
 read CONFIRM
 
-#!/bin/bash
+
 
 ###
 ###  Phase 0 - This may get messy.  Lets work from a temporary directory
@@ -159,6 +160,7 @@ fi
 
 wget http://web2py.com/examples/static/web2py_src.zip
 unzip web2py_src.zip
+mv web2py/handlers/wsgihandler.py web2py/wsgihandler.py
 chown -R apache:apache web2py
 
 ###

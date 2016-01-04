@@ -171,7 +171,8 @@ def TestLdap():
             print "new guy", lst[0]
         allUsers[uid] = lst[0]
     Name,attrs = user[0]
-    txt += "<img src=\"http://myccp/User Photos/Profile Pictures/ccp_%s_LThumb.jpg\">" % name
+    #txt += "<img src=\"http://myccp/User Photos/Profile Pictures/ccp_%s_LThumb.jpg\">" % name
+    txt += "<img src=\"%s\">" % URL("static/images/user.png")
     if type(attrs) == types.DictType:
         for k, v in attrs.iteritems():
             if "url" in k and 0:
@@ -2031,7 +2032,7 @@ def SearchSubjects():
 # Counters
 #
 
-@cache(request.env.web2py_original_uri,time_expire=300,cache_model=cache.ram)
+#@cache(request.env.web2py_original_uri,time_expire=300,cache_model=cache.ram)
 def CustomGraph():
     return DoCounters(False)
 
@@ -2217,7 +2218,7 @@ def FetchDashboardCollection():
         "numDays"    : numDays,
     }
 
-@cache(request.env.web2py_original_uri,time_expire=300,cache_model=cache.ram)
+#@cache(request.env.web2py_original_uri,time_expire=300,cache_model=cache.ram)
 def EmbeddedDashboard():
     return Dashboard()
 
@@ -5272,7 +5273,7 @@ def OwnerEvents():
 def MakeCursor(dbname=None):
     if not dbname:
         dbname = "ebs_METRICS"
-    conn = pyodbc.connect('DRIVER={SQL Server};SERVER=LOCALHOST;DATABASE=ebs_METRICS;UID=ebs_METRICS;PWD=ebs_METRICS')
+    conn = pyodbc.connect(DB_CONNECTION_STRING)
     conn.autocommit = True
     curr = conn.cursor()
     return curr

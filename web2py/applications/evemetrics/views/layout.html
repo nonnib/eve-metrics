@@ -67,10 +67,11 @@ pass}}
           {{img = ""
           if session.userName:
             if not request.user_agent().is_mobile:
-              n = XML(session.fullName)
+              n = XML(session.fullName or "Anonymous")
               if session.admin: n += " (admin)"
               if session.teamName: n += " / <span class=normaltext>%s</span>" % session.teamName.encode("UTF-8")
-              img = "<img src=\"http://myccp/User Photos/Profile Pictures/ccp_%s_LThumb.jpg\" height=60 style=\"vertical-align:bottom;\">" % session.userName}}
+              #img = "<img src=\"http://myccp/User Photos/Profile Pictures/ccp_%s_LThumb.jpg\" height=60 style=\"vertical-align:bottom;\">" % session.userName
+              img = ("<img src=\"%s\" style=\"vertical-align:bottom;\">" % URL("static/images/user1.png"))}}
               <table><tr><td style="text-align:right;">{{=XML(n)}}<br><span style="font-size:11px;"><a href="Logout">Logout</a></td><td>{{=XML(img)}}</td></tr></table>
             {{pass
           else:}}

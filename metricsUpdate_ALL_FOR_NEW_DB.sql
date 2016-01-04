@@ -80,7 +80,7 @@ CREATE PROCEDURE zmetric.Counters_Insert
   @counterID             smallint = NULL,       -- NULL means MAX-UNDER-30000 + 1
   @counterName           nvarchar(200),
   @groupID               smallint = NULL,
-  @description           nvarchar(max) = NULL,
+  @description           nvarchar(4000) = NULL,
   @subjectLookupTableID  int = NULL,            -- Lookup table for subjectID, pointing to zsystem.lookupTables/Values
   @keyLookupTableID      int = NULL,            -- Lookup table for keyID, pointing to zsystem.lookupTables/Values
   @source                nvarchar(200) = NULL,  -- Description of data source, f.e. table name
@@ -457,7 +457,7 @@ BEGIN
     collectionID              int                                          NOT NULL  IDENTITY(1, 1),
     collectionName            nvarchar(200)  COLLATE Latin1_General_CI_AI  NOT NULL,
     groupID                   smallint                                     NULL,
-    [description]             nvarchar(max)                                NULL,
+    [description]             nvarchar(4000)                                NULL,
     [order]                   smallint                                     NOT NULL  DEFAULT 0,
     createDate                datetime                                     NOT NULL  DEFAULT GETUTCDATE(),  -- *** web2py does not support datetime2(0) ***
     dynamicCounterID          smallint                                     NULL,
@@ -602,7 +602,7 @@ BEGIN
   (
     digestID         int            NOT NULL  IDENTITY(1, 1),
     digestName       nvarchar(50)   NULL,
-    [description]    nvarchar(max)  NULL,
+    [description]    nvarchar(4000)  NULL,
     createDate       smalldatetime  NULL  DEFAULT GETUTCDATE(),
     modifyDate       smalldatetime  NULL  DEFAULT GETUTCDATE(),
     userName         varchar(50)    NULL,
@@ -721,7 +721,7 @@ BEGIN
   (
     sourceType      varchar(20)    NOT NULL,
     sourceTypeText  nvarchar(100)  NOT NULL,
-    [description]   nvarchar(max)  NULL,
+    [description]   nvarchar(4000)  NULL,
     --
     CONSTRAINT sourceTypes_PK PRIMARY KEY CLUSTERED (sourceType)
   )
@@ -837,7 +837,7 @@ AS
   DECLARE @lookupTableID int, @counterTable nvarchar(256)
   SELECT @lookupTableID = keyLookupTableID, @counterTable = counterTable FROM zmetric.counters WHERE counterID = @counterID
 
-  DECLARE @stmt nvarchar(max)
+  DECLARE @stmt nvarchar(4000)
   IF @counterTable = 'zmetric.keyCounters'
   BEGIN
     SET @stmt = '
@@ -952,7 +952,7 @@ AS
     RETURN -1
   END
 
-  DECLARE @sql nvarchar(max)
+  DECLARE @sql nvarchar(4000)
 
   SET @sql = 'SELECT DT = ' + @counterDate + ', VAL = ' + @value
 
@@ -1547,14 +1547,14 @@ AS
   
     EXEC metric.BeforeExecDataProcs @sourceType, @fromProcedureOrder, @toProcedureOrder
 
-    DECLARE @eventID int, @eventID2 int, @eventText nvarchar(max), @fixedText nvarchar(450)
+    DECLARE @eventID int, @eventID2 int, @eventText nvarchar(4000), @fixedText nvarchar(450)
 
     SET @fixedText = @sourceType
     IF NOT (@fromProcedureOrder = 0 AND @toProcedureOrder = 255)
       SET @fixedText = @fixedText + ' ' + CONVERT(nvarchar, @fromProcedureOrder) + '-' + CONVERT(nvarchar, @toProcedureOrder)
     EXEC @eventID = zsystem.Events_TaskStarted 'metric.ExecDataProcs', @fixedText, NULL, @fromProcedureOrder, @toProcedureOrder
 
-    DECLARE @recipients varchar(max), @bodyHTML nvarchar(MAX) = '', 
+    DECLARE @recipients varchar(max), @bodyHTML nvarchar(4000) = '', 
             @counterOwners varchar(MAX) = '', @allRecipients varchar(MAX), @mailTitle varchar(MAX) 
     SET @recipients = zsystem.Settings_Value('Recipients', 'Admin - Proc errors')
 
@@ -1661,7 +1661,7 @@ AS
     DECLARE @counterID                     smallint,
             @counterName                   nvarchar(200),
             @groupName                     nvarchar(200),
-            @description                   nvarchar(max),
+            @description                   nvarchar(4000),
             @subjectLookupTableIdentifier  varchar(500),
             @keyLookupTableIDIdentifier    varchar(500),
             @source                        nvarchar(200),
@@ -1808,7 +1808,7 @@ AS
 
   BEGIN TRY
     DECLARE @lookupTableName       nvarchar(200),
-            @description           nvarchar(max),
+            @description           nvarchar(4000),
             @schemaID              int,
             @tableID               int,
             @source                nvarchar(200),
