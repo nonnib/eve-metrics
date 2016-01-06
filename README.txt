@@ -9,7 +9,7 @@ IF YOU PLAN ON USING THIS, DO SO AT YOUR OWN RISK.
 
 
 AUTHOR
-Jon Bjarnason / nonnib
+Jon Bjarnason & Jorundur Matthiasson
 Team Zorglub
 Team Data
 

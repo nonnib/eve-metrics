@@ -63,6 +63,7 @@ target/
 */*/*/errors/
 */*/*/sessions/
 *.pid
+*.log
 
 # Secret web2py config
 web2py/applications/evemetrics/modules/config.py
