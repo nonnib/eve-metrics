@@ -16,27 +16,44 @@ logger.setLevel(logging.WARN)
 def FmtDate(dt):
     return dt.strftime("%Y-%m-%d")
 
-DB_SERVER   = "devnorth-mssql.c40zji49p9dj.eu-west-1.rds.amazonaws.com"
+LOCALE = "en_GB.utf8"
+
+ADMIN_PASSWORD = "changeme"
+ACCESS_SECRET  = "changemetoo"
+
+LDAP_URL = ""
+JUMPCLOUD_ORG_ID = ""
+LDAP_USERNAME = ""
+LDAP_PASSWORD = ""
+
+DB_SERVER   = "localhost"
 DB_USERNAME = "ebs_METRICS"
 DB_PASSWORD = "ebs_METRICS"
-DB_DRIVER   = "{SQL Server}"
+DB_DRIVER   = "{freetds}"
 DB_DATABASE = "ebs_METRICS"
+
+if os.name == "nt":
+    LOCALE = "uk"
+    DB_DRIVER   = "{SQL Server}"
+
+try:
+    from config import *
+except ImportError:
+    print "You must have a config.py file in your modules folder!"
 
 DB_WEB2PY_STRING = 'mssql://{username}:{password}@{server}/{database}?driver={driver}'.format(username=DB_USERNAME,
                                                                                               password=DB_PASSWORD, 
                                                                                               server=DB_SERVER, 
                                                                                               database=DB_DATABASE, 
                                                                                               driver=DB_DRIVER)
-DB_CONNECTION_STRING = 'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'.format(username=DB_USERNAME,
-                                                                                                                  password=DB_PASSWORD, 
-                                                                                                                  server=DB_SERVER, 
-                                                                                                                  database=DB_DATABASE, 
-                                                                                                                  driver=DB_DRIVER)
-
-ADMIN_PASSWORD = "changeme"
-ACCESS_SECRET  = "SECRET!"
+DB_CONNECTION_STRING = 'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password};PORT=1433'.format(username=DB_USERNAME,
+                                                                                                                            password=DB_PASSWORD, 
+                                                                                                                            server=DB_SERVER, 
+                                                                                                                            database=DB_DATABASE, 
+                                                                                                                            driver=DB_DRIVER)
 
 def RedirectPrintToLog(logName):
+    #! In a windows service we must not print to stdout or we'll stall, but I have disabled this for my linux purposes
     return
     logFileName = os.path.join("logs", "%s_%s_stdout.log" % (logName, FmtDate(datetime.datetime.today())))
     sys.stdout = open(logFileName, "a")
@@ -154,12 +171,12 @@ def FmtDatePretty(dt):
 
 def FmtAmtInt(amt):
     amt = amt or 0
-    locale.setlocale(locale.LC_ALL, 'UK')
+    locale.setlocale(locale.LC_ALL, LOCALE)
     return locale.format("%.0f", amt, grouping=True)
 
 def FmtAmtSmart(amt):
     amt = amt or 0
-    locale.setlocale(locale.LC_ALL, 'UK')
+    locale.setlocale(locale.LC_ALL, LOCALE)
     fmt = "%.0f"
     if amt > 0 and amt < 10:
         fmt = "%.1f"
@@ -167,7 +184,7 @@ def FmtAmtSmart(amt):
 
 def FmtAmt(amt, decimalMap={0.0: "%.2f", 1000000.0: "%.0f"}):
     amt = amt or 0
-    locale.setlocale(locale.LC_ALL, 'UK')
+    locale.setlocale(locale.LC_ALL, LOCALE)
     if int(round(amt, 0) * 100.0) == int(round(amt*100.0, 0)): # always show no digits on whole ints
         fmt = "%.0f"
     else:

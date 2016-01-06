@@ -36,7 +36,7 @@ pass
 {{for l in tagLinks:
 	if not l[4]: continue}}
 	<li>
-	<img src="static/images/{{=l[5]}}" width=16 class=middleimg> {{=l[3]}} <span class=smallertext>({{=l[4]}}, tagged by <a href="{{=GetFullUrlWithout("userName")}}userName={{=l[6]}}">{{=l[6]}}</a>)</span>
+	<img src="{{URL("static/images/%s" % l[5])}}" width=16 class=middleimg> {{=l[3]}} <span class=smallertext>({{=l[4]}}, tagged by <a href="{{=GetFullUrlWithout("userName")}}userName={{=l[6]}}">{{=l[6]}}</a>)</span>
 	</li>
 	{{pass}}
 </ul>

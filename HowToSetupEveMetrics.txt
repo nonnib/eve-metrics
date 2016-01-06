@@ -70,7 +70,7 @@ EVE METRICS ON UBUNTU
 
 The setup instructions above assume a Windows platform. If you want to run Eve Metrics on Linux you will need to take an additonal step to get things up and running. 
 
-This step involves setting up MS SQL Server ODBC connection from Linux. Note that the MS SQL Instance only runs on Windows while the webserver can run on Linux.
+This step involves setting up MS SQL Server ODBC connection from Linux. Note that the MS SQL Instance only runs on Windows while the webserver can run on Linux. This will take some fiddling around with on your part so set aside a couple of hours.
 
 We will assume an Ubuntu Linux instance running in AWS with the ebs_METRICS database running on a managed RDS instance.
 
@@ -117,6 +117,23 @@ If you run into issues I would suggest getting the connection to work in a pytho
 > pyodbc.connect("DRIVER={freetds};SERVER=myserver-mssql.c40zji49p9dj.eu-west-1.rds.amazonaws.com;DATABASE=ebs_METRICS;UID=ebs_METRICS;PWD=ebs_METRICS")
 > curr = pyodbc.execute("SELECT * FROM zmetric.countersEx")
 > print curr.fetchone()
+
+NOTE: The Linux unixODBC driver does not line nvarchar(max) fields so I needed to change them to nvarchar(4000) in my local repo
+
+If you get a locale error when viewing the website you will need to install the en_GB locale.
+http://askubuntu.com/questions/76013/how-do-i-add-locale-to-ubuntu-server
+
+> sudo locale-gen en_GB
+> sudo locale-gen en_GB.UTF-8
+> sudo dpkg-reconfigure locales
+
+To install ldap you need to do the following:
+> sudo apt-get install libsasl2-dev python-dev libldap2-dev libssl-dev
+> sudo pip install python-ldap
+
+http://stackoverflow.com/questions/4768446/python-cant-install-python-ldap
+
+Installing phantomJS on Ubuntu: https://gist.github.com/julionc/7476620
 
 -----------
 OTHER STUFF

@@ -26,6 +26,9 @@ class WriteNullBuffer:
 def Login():
     userName = ""
     error = ""
+    redir = request.vars.redirect
+    if isinstance(redir, list):
+        redir = redir[0]
     if request.vars.username:
         userName = request.vars.username.split("@")[0]
         password = request.vars.password
@@ -35,25 +38,35 @@ def Login():
         if user is None:
             error = "<span style=\"font-weight:bold;\">You could not be logged on.</span><br>Please make sure that your user name and password are correct, and then try again."
         else:
-            redirect(request.vars.redirect or "/")
+            redirect(redir or URL("index"))
     else:
         userName = GetCookie("userName")
     return {
         "userName": userName,
         "error"   : error,
-        "redirect" : request.vars.redirect
+        "redirect" : redir
         }
 
+def GetGravatarUrl(email):
+    import urllib, hashlib
+     
+    # Set your variables here
+    default = "http://www.example.com/default.jpg"
+    size = 40
+     
+    # construct the url
+    gravatar_url = "http://www.gravatar.com/avatar/" + hashlib.md5(session.emailAddress.lower()).hexdigest() + "?"
+    gravatar_url += urllib.urlencode({'d':default, 's':str(size)})
+    return gravatar_url
+
 def DoLogin(userName, password=None):
-    user = [userName, userName, []]
+    user = AuthenticateAD(userName, password)
     if user is not None:
         session.userName = user[0]
-        session.fullName = user[1]
-        session.groups   = user[2]
-        session.emailAddress = user[0] + "@ccpgames.com"
-        session.teamName = GetTeamForUser(user[0])
-        if session.teamName:
-            session.teamName = "Team " + session.teamName
+        session.fullName = user[2]
+        session.emailAddress = user[1]
+        session.profilePicture = GetGravatarUrl(session.emailAddress)
+        session.groups = None
         SetCookie("userName", session.userName)
     return user
 
@@ -61,22 +74,20 @@ def DoLogin(userName, password=None):
 def Logout():
     session.clear()
     SetCookie("userName", "")
-    redirect("/")
+    redirect(URL("index"))
 
 
 def GetLDAP():
-    DN = "ccp\LDAP_SERVICE_USER"
-    password = "CHANGEME"
-    username = "LDAP_SERVICE_USER"
-    l = ldap.initialize("ldap://ccp.ad.local")
+    l = ldap.initialize(LDAP_URL)
     l.set_option(ldap.OPT_REFERRALS, 0)
     l.protocol_version = 3
-    con = l.simple_bind_s(DN, password)
+    ldap_dn  = "uid=%s,ou=Users,o=%s,dc=jumpcloud,dc=com" % (LDAP_USERNAME, JUMPCLOUD_ORG_ID)
+    con = l.simple_bind_s(ldap_dn, LDAP_PASSWORD)
     return l
 
 def FindRecipientInAD(email):
     l = GetLDAP()
-    Base = "dc=ccp,dc=ad,dc=local"
+    Base = "ou=Users,o=545c86bf66ac83ce530117bf,dc=jumpcloud,dc=com"
     Scope = ldap.SCOPE_SUBTREE
     Filter = "(&(mail=%s))" % (email)
     attrs = ["mailNickname", "displayName", "memberOf", "objectClass"]
@@ -113,31 +124,26 @@ def FindGroupsRecursive(l, filt):
     return sorted(set(groups))
 
 def AuthenticateAD(userName, password):
-    l = ldap.initialize("ldap://ccp.ad.local")
+    ldap_dn  = "uid=%s,ou=Users,o=%s,dc=jumpcloud,dc=com" % (userName, JUMPCLOUD_ORG_ID)
+    l = ldap.initialize(LDAP_URL)
     l.set_option(ldap.OPT_REFERRALS, 0)
     l.protocol_version = 3
-    if password:
-        try:
-            con = l.simple_bind_s(userName + "@ccp.ad.local", password)
-        except ldap.INVALID_CREDENTIALS:
-            return None
-
-    Base = "dc=ccp,dc=ad,dc=local"
-    Scope = ldap.SCOPE_SUBTREE
-    Filter = "(&(objectClass=user)(mailNickname=%s))" % (userName)
-    attrs = ["mailNickname", "uSNCreated", "displayName", "memberOf"]
-    l = GetLDAP()
-    r = l.search(Base, Scope, Filter, attrs)
-    resultType, ADUsers = l.result(r,60)
-    if not ADUsers[0][0]:
+    try:
+        con = l.simple_bind_s(ldap_dn, password)
+    except ldap.INVALID_CREDENTIALS:
+        print "Invalid password for %s" % userName
         return None
-    user = ADUsers[0][1]
+
+    ldap_base_search = "ou=Users,o=%s,dc=jumpcloud,dc=com" % JUMPCLOUD_ORG_ID
+    filt = "(&(uid=%s))" % (userName)
+    l = GetLDAP()
+    users = l.search_s(ldap_base_search, ldap.SCOPE_SUBTREE, filt)
+    user = users[0][1]
+    emailAddress = user["mail"][0]
+    fullName = user["cn"][0]
+    userName = user["uid"][0]
     groups = []
-    t = time.time()
-    f = "(&(mailNickname=%s))" % userName
-    groups = FindGroupsRecursive(l, f)
-    print "Found %s groups for %s in %.4f" % (len(groups), userName, time.time()-t)
-    return user["mailNickname"][0], user["displayName"][0], groups
+    return userName, emailAddress, fullName
 
 
 def TestLdap():
@@ -209,7 +215,7 @@ def ProcessAccessRules(contentType, contentID, ownerUserName=None, subContent=0,
     em = ""
     if embedded:
         em = "Embedded"
-    redirect("%sAccessDenied?contentType=%s&contentID=%s&ownerUserName=%s&subContent=%s&redirect=%s" % (em, contentType, contentID, ownerUserName, int(subContent), GetFullUrl()))
+    redirect(URL("%sAccessDenied?contentType=%s&contentID=%s&ownerUserName=%s&subContent=%s&redirect=%s" % (em, contentType, contentID, ownerUserName, int(subContent), GetFullUrl())))
 
 
 def EmbeddedAccessDenied():
@@ -236,10 +242,14 @@ def GetMemoryUsage():
 
 
 def GetSystemMessage():
-    sql = "SELECT [value] FROM zsystem.settings WHERE [group] = 'metrics' and [key] = 'evemetricsSystemMessage'"
-    curr = MakeCursor("ebs_METRICS")
-    curr.execute(sql)
-    rows = curr.fetchall()
+    try:
+        sql = "SELECT [value] FROM zsystem.settings WHERE [group] = 'metrics' and [key] = 'evemetricsSystemMessage'"
+        curr = MakeCursor()
+        curr.execute(sql)
+        rows = curr.fetchall()
+    except Exception as e:
+        print "Exception getting system message: %s" % e
+        return None
     if rows and rows[0][0]:
         return rows[0][0]
     return None
@@ -256,6 +266,9 @@ def FuncTime(action, *args, **kwargs):
             userName = GetCookie("userName")
             if userName:
                 DoLogin(userName)
+        if not session.userName:
+            LoggedIn()
+            return
         if request.vars.message:
             response.flash = request.vars.message
         #f = open("C:\\web2pylogs\logs.txt", "a+")
@@ -783,7 +796,7 @@ def DeleteDigest():
     dbmetrics.executesql(sql)
     sql = "DELETE FROM metric.digestEmails WHERE digestID = %d" % digestID
     dbmetrics.executesql(sql)
-    redirect("Digests?message=Digest has been deleted")
+    redirect(URL("Digests?message=Digest has been deleted"))
 
 @FuncTime
 def EditDigest():
@@ -846,9 +859,9 @@ def EditDigest():
 
         session.flash = "Digest has been saved."
         if newDigest:
-            redirect("EditDigest?digestID=%s" % digestID)
+            redirect(URL("EditDigest?digestID=%s" % digestID))
         else:
-            redirect("ViewDigest?digestID=%s" % digestID)
+            redirect(URL("ViewDigest?digestID=%s" % digestID))
     else:
         digestID = int(request.vars.digestID)
 
@@ -1173,7 +1186,7 @@ def EditDigestSection():
         if zoomApplyToAll:
             sql = "UPDATE metric.digestSections SET zoom = %s WHERE digestID = %s" % (SqlFloatOrNULL(zoom), digestID)
             dbmetrics.executesql(sql)
-        redirect("EditDigest?digestID=%s" % digestID)
+        redirect(URL("EditDigest?digestID=%s" % digestID))
     else:
         sql = "SELECT * FROM metric.digests WHERE digestID = %d" % digestID
         digestRow = dbmetrics.executesql(sql)[0]
@@ -1305,7 +1318,7 @@ INSERT INTO metric.digestAlerts (templateID, severity, alertTitle, description, 
             "severity" : severity,
             }
         dbmetrics.executesql(sql)
-        redirect("EditDigest?digestID=%s" % digestID)
+        redirect(URL("EditDigest?digestID=%s" % digestID))
     else:
         sql = "SELECT * FROM metric.digests WHERE digestID = %d" % digestID
         digestRow = dbmetrics.executesql(sql)[0]
@@ -1496,7 +1509,7 @@ def IsLocal():
     return "127.0.0.1" in request.client.lower()
 
 def LoggedIn(isAdmin=False):
-    if IsLocal():
+    if IsLocal() and 0:
         return True
     if not session.userName:
         redirect(URL("Login?redirect=%s" % GetFullUrl()))
@@ -1527,7 +1540,7 @@ def DeleteMarker():
     dbmetrics.executesql(sql)
 
     cache.ram.clear()
-    redirect("Markers?typeID=%d" % typeID)
+    redirect(URL("Markers?typeID=%d" % typeID))
 
 
 def AddMarkerFromGraph():
@@ -1620,7 +1633,7 @@ def AddMarker():
         sql = ""
         cache.ram.clear()
 
-        redirect("ViewMarker?markerID=%s" % markerID)
+        redirect(URL("ViewMarker?markerID=%s" % markerID))
 
     markerColumnValues = {}
     if markerID:
@@ -1691,7 +1704,7 @@ def EditMarkerCategory():
             sql = "INSERT INTO markerTypeCategories (title, description, markerTypeID) VALUES ('%s', '%s', %s)" % (title, description, typeID)
         dbmetrics.executesql(sql)
         cache.ram.clear()
-        redirect("/ManageMarkerCategories")
+        redirect(URL("ManageMarkerCategories"))
 
     title = ""
     description = ""
@@ -1721,7 +1734,7 @@ def DeleteMarkerCategory():
 
     sql = "DELETE FROM markerTypeCategories WHERE categoryID = %d" % categoryID
     dbmetrics.executesql(sql)
-    redirect("ManageMarkerCategories")
+    redirect(URL("ManageMarkerCategories"))
 
 
 @FuncTime
@@ -1736,7 +1749,7 @@ def MoveMarkersToCategory():
         sql = "UPDATE markers SET categoryID = %d where markerID = %d" % (toCategoryID, int(m))
         dbmetrics.executesql(sql)
     cache.ram.clear()
-    redirect("Markers?categoryID=%s" % toCategoryID)
+    redirect(URL("Markers?categoryID=%s" % toCategoryID))
 
 def GetCounters():
     return cache.ram("counters", lambda:DoGetCounters(), CACHE_TIME_FOREVER)
@@ -2048,15 +2061,15 @@ def Counters():
         collectionID = int(request.vars.collectionID)
         if cmd == "savecollection":
             UpdateCollection(collectionID)
-            redirect("Counters?collectionID=%s" % collectionID)
+            redirect(URL("Counters?collectionID=%s" % collectionID))
         elif cmd in ("addtocollection", "newcollection"):
             newCollectionID = AddNewToCollection()
             if cmd == "newcollection":
                 UpdateCollection(newCollectionID)
             if newCollectionID != collectionID:
-                redirect("EditCollection?collectionID=%s&new=1" % newCollectionID)
+                redirect(URL("EditCollection?collectionID=%s&new=1" % newCollectionID))
             else:
-                redirect("Counters?collectionID=%s" % collectionID)
+                redirect(URL("Counters?collectionID=%s" % collectionID))
 
     return DoCounters()
 
@@ -2168,7 +2181,7 @@ def DeleteDashboard():
     dashboardID = int(request.vars.dashboardID)
     sql = "DELETE FROM metric.dashboards WHERE dashboardID = %d" % dashboardID
     dbmetrics.executesql(sql)
-    redirect("Dashboards")
+    redirect(URL("Dashboards"))
 
 #@cache(request.env.web2py_original_uri,time_expire=300,cache_model=cache.ram)
 def FetchCondensedDashboardCollection():
@@ -2425,7 +2438,7 @@ def SaveDashboard():
         dashboardID = dbmetrics.executesql(sql)[0][0]
 
     cache.ram("dashboards", None, 0) 
-    redirect("Dashboard?dashboardID=%s" % dashboardID)
+    redirect(URL("Dashboard?dashboardID=%s" % dashboardID))
 
 def SetWidth():
     if request.vars.fullwidth:
@@ -2585,7 +2598,7 @@ def DoCounters(persist=True):
             return "Collection %s not found" % collectionID
         ProcessAccessRules("COLLECTION", collectionID)
         if collection.dynamicCounterID:
-            redirect("Dashboard?collectionID=%s" % collectionID)
+            redirect(URL("Dashboard?collectionID=%s" % collectionID))
         collectionConfig = collection.config or {}
         description = collection.description
         aggregateMethod = collection.config.get("aggregateMethod", "DateDay")
@@ -3291,7 +3304,7 @@ def CreateFilterList(rows, tag):
 def Reports():
     response.title = "%s - Reports" % SITE_TITLE
     if request.vars.counterID:
-        redirect("Report?counterID=%s" % request.vars.counterID)
+        redirect(URL("Report?counterID=%s" % request.vars.counterID))
 
     mr = ""
     if request.vars.groupID:
@@ -3314,9 +3327,9 @@ def Collections():
         collectionID = int(request.vars.collectionID)
         collection = GetCollection(collectionID)
         if collection.config.get("defaultView", "graphs") == "dashboard":
-            redirect("Dashboard?collectionID=%d" % collectionID)
+            redirect(URL("Dashboard?collectionID=%d" % collectionID))
         else:
-            redirect("Counters?collectionID=%d" % collectionID)
+            redirect(URL("Counters?collectionID=%d" % collectionID))
 
     response.title = "%s - Collections" % SITE_TITLE
 
@@ -3442,7 +3455,7 @@ def Report():
     #PRINTTIME(3)
 
     #PRINTTIME(4)
-    sql = "select OBJECT_DEFINITION(OBJECT_ID('%s'))" % c.procedureName
+    sql = "select CAST(OBJECT_DEFINITION(OBJECT_ID('%s')) AS VARCHAR(4000))" % c.procedureName
     procText = dbmetrics.executesql(sql)[0][0]
     keyLink = subjectLink = ""
     keyLabel = subjectLabel = ""
@@ -3752,9 +3765,9 @@ def AddToCollection():
     cache.ram("collections", None, 0) 
 
     if newCollection:
-        redirect("EditCollection?collectionID=%s&new=1" % collectionID)
+        redirect(URL("EditCollection?collectionID=%s&new=1" % collectionID))
     else:
-        redirect("Counters?collectionID=%s" % collectionID)
+        redirect(URL("Counters?collectionID=%s" % collectionID))
 
 def AddCounterToCollection(collectionID, counterID, subjectID, keyID):
     subjectID if subjectID is not None else "NULL"
@@ -3808,7 +3821,7 @@ def DeleteCollection():
 
     cache.ram("collections", None, 0) 
 
-    redirect("Collections")
+    redirect(URL("Collections"))
 
 
 @FuncTime
@@ -3834,7 +3847,7 @@ INSERT INTO metric.collectionCounters (collectionID, collectionIndex, counterID,
   SELECT %s, collectionIndex, counterID, subjectID, keyID, label, aggregateFunction, severityThreshold, goal, goalType, goalDirection, config FROM metric.collectionCounters WHERE collectionID = %s
     """ % (newCollectionID, collectionID)
     dbmetrics.executesql(sql)
-    redirect("/EditCollection?collectionID=%s" % newCollectionID)
+    redirect(URL("EditCollection?collectionID=%s" % newCollectionID))
 
 def UpdateConfig(tableName, rowMatch, configChange):
     sql = "SELECT config FROM %s WHERE %s" % (tableName, rowMatch)
@@ -3934,7 +3947,7 @@ def EditCollection():
         if request.vars.referer and "Login" not in request.vars.referer and request.vars.referer != "None" and "collectionID" in request.vars.referer:
             redirect(request.vars.referer)
         else:
-            redirect("Collections?collectionID=%s" % collectionID)
+            redirect(URL("Collections?collectionID=%s" % collectionID))
 
     name = ""
     description = ""
@@ -3998,7 +4011,7 @@ def DeleteCounter():
     sql = "EXEC metric.Counters_Delete %d" % counterID
     rows = dbmetrics.executesql(sql)
     cache.ram("counterinfo", None, 0)
-    redirect("Reports")
+    redirect(URL("Reports"))
 
 
 def SqlStringOrNULL(v):
@@ -4330,7 +4343,7 @@ def DeleteLookupTable():
     lookupTableID = int(request.vars.lookupTableID)
     sql = "EXEC metric.LookupTables_Delete %d" % lookupTableID
     rows = dbmetrics.executesql(sql)
-    redirect("/ViewLookupTables")
+    redirect(URL("ViewLookupTables"))
 
 
 @FuncTime
@@ -4405,7 +4418,7 @@ def EditLookupTable():
             lookupTableID = rows[0][0]
 
         cache.ram.clear()
-        redirect("ViewLookupTable?lookupTableID=%d" % lookupTableID)
+        redirect(URL("ViewLookupTable?lookupTableID=%d" % lookupTableID))
 
     name = ""
     description = ""
@@ -4572,7 +4585,7 @@ def EditGroup():
             sql = "INSERT INTO zmetric.groups (groupName, description, [order], groupID) VALUES ('%s', '%s', 0, %s)" % (name, description, GetTopGroupID()+1)
         dbmetrics.executesql(sql)
         cache.ram.clear()
-        redirect("/ManageGroups")
+        redirect(URL("ManageGroups"))
 
     name = ""
     description = ""
@@ -4599,7 +4612,7 @@ def RemoveGroup():
     groupID = int(request.vars.groupID)
     sql = "EXEC metric.Groups_Delete %d" % groupID
     rows = dbmetrics.executesql(sql)
-    redirect("/ManageGroups")
+    redirect(URL("ManageGroups"))
 
 @FuncTime
 def ManageSettings():
@@ -4615,7 +4628,7 @@ def EditSetting():
         val = MakeSafe(request.vars.value)
         sql = "UPDATE zsystem.settings SET [value] = '%s' WHERE [group] = '%s' AND [key] = '%s' AND allowUpdate = 1" % (val, group, key)
         dbmetrics.executesql(sql)
-        redirect("ManageSettings?message=Settings Have been updated")
+        redirect(URL("ManageSettings?message=Settings Have been updated"))
     else:
         group = MakeSafe(request.vars.group)
         key = MakeSafe(request.vars.key)
@@ -4637,7 +4650,7 @@ def Admin():
         v = request.post_vars
         if v.adminPassword == ADMIN_PASSWORD:
             session.admin = 1
-            redirect(request.vars.redirect or URL("/Admin"))
+            redirect(request.vars.redirect or URL("Admin"))
         else:
             error = "Incorrect password"
     if session.admin:
@@ -5138,6 +5151,7 @@ def GetMyStars():
         return []
 
     sql = "EXEC metric.Tags_UserStarred '%s'" % session.userName
+    print 
     LogQuery(sql)
     rows = dbmetrics.executesql(sql)
     for r in rows:
@@ -5223,7 +5237,7 @@ def GetFormattedTagsFromRows(rows, tagName=None, linkType=None):
             counter = allCounters.get(r.linkID, None)
             if counter:
                 title = (counter.groupName or "bla") + " / " + counter.counterName
-                url = A(title, _href="/Reports?counterID=%s" % counter.counterID)
+                url = A(title, _href="Reports?counterID=%s" % counter.counterID)
                 img = "tables.png"
                 typeDesc = "Report"
                 context = counter
@@ -5231,7 +5245,7 @@ def GetFormattedTagsFromRows(rows, tagName=None, linkType=None):
             collection = allCollections.get(r.linkID, None)
             if collection:
                 title = (collection.groupName or "bla") + " / " + collection.collectionName
-                url = A(title, _href="/Counters?collectionID=%s" % collection.collectionID)
+                url = A(title, _href="Counters?collectionID=%s" % collection.collectionID)
                 img = "chart_sml.png"
                 typeDesc = "Collection"
                 context = collection
@@ -5272,7 +5286,7 @@ def OwnerEvents():
 
 def MakeCursor(dbname=None):
     if not dbname:
-        dbname = "ebs_METRICS"
+        dbname = DB_DATABASE
     conn = pyodbc.connect(DB_CONNECTION_STRING)
     conn.autocommit = True
     curr = conn.cursor()
@@ -5329,9 +5343,9 @@ def TaskLogs():
     numRows = int(request.vars.numRows or 100)
     eventID = request.vars.eventID
     text = request.vars.text or ""
-    database = request.vars.db or "ebs_METRICS"
+    database = request.vars.db or DB_DATABASE
     databases = [
-        ["ebs_METRICS", None],
+        [DB_DATABASE, None],
     ]
     filt = MakeSafe(request.vars.filt)
 
@@ -5468,7 +5482,7 @@ SELECT * FROM @results ORDER BY dt, title, dayNumber
         "endDate": endDate or (datetime.datetime.now()).strftime("%Y-%m-%d"),
     }
     response.mainquery.append(sql)
-    curr = MakeCursor("ebs_METRICS")
+    curr = MakeCursor()
     curr.execute(sql)
     rows = curr.fetchall()
     series = collections.OrderedDict()
@@ -5502,8 +5516,8 @@ def index():
     """
     #response.flash = "Welcome to EVE Metrics!"
     response.title = SITE_TITLE
-    if IsLocal():
-        session.userName = "nonnib"
+    #if IsLocal():
+    #    session.userName = "nonnib"
     message = ""
     stars = GetFormattedTagsFromRows(GetMyStars())
     starredDashboards = GetFormattedTagsFromRows(GetMyStars(), linkType=TAG_DASHBOARD)

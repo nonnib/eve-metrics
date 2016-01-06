@@ -15,6 +15,9 @@ routes_out = (
     (".*:(http|https)://127.0.0.1:(get|post) (?P<any>.*)/servicemonitor/static/(?P<file>[\w\./_-]+)", "\g<any>/static/\g<file>"),
     (".*:(http|https)://127.0.0.1:(get|post) (?P<any>.*)/default/(?P<file>[\w\./_-]+)", "\g<any>/default/\g<file>"),
     (".*:(http|https)://127.0.0.1:(get|post) (?P<any>.*)/servicemonitor/(?P<file>[\w\./_-]+)", "\g<any>/servicemonitor/\g<file>"),
+    (".*:(http|https)://metrics.dg-api.com:(get|post) (?P<any>.*)/default/static/(?P<file>[\w\./_-]+)", "\g<any>/static/\g<file>"),
+
+    (".*:(http|https)://52.31.150.176:(get|post) (?P<any>.*)/default/static/(?P<file>[\w\./_-]+)", "\g<any>/static/\g<file>"),
 
     # PRODUCTION RULES 
     # example urls:

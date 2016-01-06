@@ -46,8 +46,8 @@
 			s = " sel"
 			s2 = "color:white;"
 		pass
-		if not v.private:}}
-		<td class="markerType{{=s}}" OnClick="Goto('?typeID={{=k}}');"><a href="?typeID={{=k}}" style="{{=s2}}">{{=v.title}}</a></td>
+		if v and not v.private:}}
+			<td class="markerType{{=s}}" OnClick="Goto('?typeID={{=k}}');"><a href="?typeID={{=k}}" style="{{=s2}}">{{=v.title}}</a></td>
 		{{pass}}
 	{{pass}}
 	</tr>
@@ -59,7 +59,7 @@
 	{{for k, v in {-1: "My Events"}.items():
 		s = ""
 		s2 = ""
-		if k == typeID or markerTypes.get(realTypeID).private:
+		if k == typeID or (realTypeID in markerTypes and markerTypes.get(realTypeID).private):
 			s = " sel"
 			s2 = "color:white;"
 		pass
